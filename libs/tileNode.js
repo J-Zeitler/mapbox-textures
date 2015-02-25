@@ -7,9 +7,12 @@ var TileNode = function (opts) {
   this.level = opts.level;
   this.ulrichFactor = opts.ulrichFactor;
   this.transform = opts.transform || '';
+  this.tileLoader = opts.tileLoader;
 
   this.col = opts.col || 0;
   this.row = opts.row || 0;
+
+  this.loading = false;
 
   this.scale = this.master.getScale()/Math.pow(2, this.level);
 
@@ -45,14 +48,17 @@ TileNode.prototype.update = function () {
       this.addToMaster();
       this.update();
     } else if (this.isSplit) {
+      if (this.added) {
+        this.removeFromMaster();
+      }
       this.updateChildren();
-    } else if (!this.added) {
+    } else if (!this.added && !this.loading) {
       this.addToMaster();
     }
-  } else if (this.isSplit) {
-    // TODO: revisit this
-    this.updateChildren();
-  } else {
+  } else if (this.added) {
+    if (this.isSplit) {
+      this.updateChildren();
+    }
     this.removeFromMaster();
   }
 };
@@ -141,7 +147,8 @@ TileNode.prototype.split = function () {
     master: this.master,
     level: this.level + 1,
     ulrichFactor: this.ulrichFactor*0.5,
-    transform: this.transform
+    transform: this.transform,
+    tileLoader: this.tileLoader
   }
 
   var nextCol = this.col*2;
@@ -182,6 +189,7 @@ TileNode.prototype.split = function () {
 
 /**
  * Collapse this tile into a leaf node
+ * TODO: Children get stuck in limbo, causing z-fighting, if they haven't finished loading
  */
 TileNode.prototype.merge = function () {
   if (this.isSplit) {
@@ -200,16 +208,28 @@ TileNode.prototype.merge = function () {
 };
 
 TileNode.prototype.addToMaster = function () {
-  this.master.addTile(this);
-  this.added = true;
+  this.loading = true;
+  var texUrl = this.tileLoader.loadTileTexture(this, function (image) {
+    if (image) {
+      this.texture = THREE.ImageUtils.loadTexture(image);
+
+      this.master.addTile(this);
+      this.added = true;
+    }
+    this.loading = false;
+  }, this);
 };
 
 /**
- * Remove this tile from the render list
+ * Attempt to remove this tile from the render list
  */
 TileNode.prototype.removeFromMaster = function () {
-  this.master.removeTile(this);
-  this.added = false;
+  if (this.tileLoader.isLoading(this)) {
+    this.tileLoader.abortLoading(this);
+  }
+  if (this.master.removeTile(this)) {
+    this.added = false;
+  }
 };
 
 /**

@@ -7,9 +7,16 @@ var TileLoader = function (opts) {
   this.accessToken = opts.mapbox.accessToken;
   this.layer = opts.layer || 'mapbox.streets';
 
+  this.flushImgSrc = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+
+  this.loadMap = {};
 };
 
-TileLoader.prototype.loadTileTexture = function (z, x, y, callback, ctx) {
+TileLoader.prototype.loadTileTexture = function (tile, callback, ctx) {
+  var z = tile.level;
+  var x = tile.col;
+  var y = tile.row;
+
   var url = [
     this.baseUrl,
     this.layer, '/',
@@ -28,16 +35,38 @@ TileLoader.prototype.loadTileTexture = function (z, x, y, callback, ctx) {
   var tileImg = document.createElement('img');
   tileImg.crossOrigin = 'anonymous';
 
-  tileImg.onload = function () {
+  this.loadMap[tile.id] = tileImg;
+
+  tileImg.abort = function () {
+    callback.call(ctx, false);
+    delete this.loadMap[tile.id];
+  }.bind(this);
+
+  tileImg.onload = function (abortSignal) {
     canvas.width = tileImg.width;
     canvas.height = tileImg.height;
 
     canvasContext.drawImage(tileImg, 0, 0, tileImg.width, tileImg.height);
 
     var dataURL = canvas.toDataURL();
-    // console.log(dataURL);
+    delete this.loadMap[tile.id];
     callback.call(ctx, dataURL);
   }.bind(this);
 
   tileImg.src = url;
+};
+
+/**
+ * Check if the TileLoader is loading the supplied tile
+ * @param  TileNode  tile
+ * @return Boolean
+ */
+TileLoader.prototype.isLoading = function (tile) {
+  return this.loadMap.hasOwnProperty(tile.id);
+};
+
+TileLoader.prototype.abortLoading = function (tile) {
+  this.loadMap[tile.id].onload = function () {};
+  this.loadMap[tile.id].src = this.flushImgSrc;
+  this.loadMap[tile.id].abort();
 };

@@ -9,7 +9,7 @@ var ChunkedPlane = function (opts) {
   this.maxScreenSpaceError = opts.maxScreenSpaceError || 2;
   this.camera = opts.camera;
   this.scaleFactor = opts.scale || 1;
-  this.maxLevels = opts.maxLevels || 8;
+  this.maxLevels = opts.maxLevels || 32;
 
   this.vertShader = opts.shaders.vert;
   this.fragShader = opts.shaders.frag;
@@ -36,7 +36,8 @@ ChunkedPlane.prototype.initTileTree = function () {
     parent: null,
     master: this,
     level: 0,
-    ulrichFactor: 0.005*this.scaleFactor
+    ulrichFactor: 0.005*this.scaleFactor,
+    tileLoader: this.tileLoader
   });
 };
 
@@ -50,59 +51,59 @@ ChunkedPlane.prototype.addTile = function (tile) {
 
   var tileMaterial;
 
-  var texUrl = this.tileLoader.loadTileTexture(tile.level, tile.col, tile.row, function (image) {
-    tile.texture = THREE.ImageUtils.loadTexture(image);
 
-    if (this.vertShader && this.fragShader) {
-      var tileUniforms = {
-        worldScale: {type: "f", value: this.scaleFactor*0.5},
-        level: {type: "f", value: tile.level},
-        tileTex: {type: "t", value: tile.texture},
-        topLeft: {type: "v2", value: topLeft},
-        tileScale: {type: "f", value: tile.scale}
-      };
+  if (this.vertShader && this.fragShader) {
+    var tileUniforms = {
+      worldScale: {type: "f", value: this.scaleFactor*0.5},
+      level: {type: "f", value: tile.level},
+      tileTex: {type: "t", value: tile.texture},
+      topLeft: {type: "v2", value: topLeft},
+      tileScale: {type: "f", value: tile.scale}
+    };
 
-      tileMaterial = new THREE.ShaderMaterial({
-        uniforms: tileUniforms,
-        vertexShader: this.vertShader,
-        fragmentShader: this.fragShader
-      });
+    tileMaterial = new THREE.ShaderMaterial({
+      uniforms: tileUniforms,
+      vertexShader: this.vertShader,
+      fragmentShader: this.fragShader
+    });
 
-      // tileMaterial.wireframe = true;
-      // tileMaterial.wireframeLinewidth = 1.0;
-    } else {
-      tileMaterial = new THREE.MeshBasicMaterial({wireframe: true, color: 'red'});
-    }
+    // tileMaterial.wireframe = true;
+    // tileMaterial.wireframeLinewidth = 1.0;
+  } else {
+    tileMaterial = new THREE.MeshBasicMaterial({wireframe: true, color: 'red'});
+  }
 
-    var translation = new THREE.Matrix4().makeTranslation(
-      tile.position.x,
-      tile.position.y,
-      tile.position.z
-    );
-    tileGeometry.applyMatrix(translation);
+  var translation = new THREE.Matrix4().makeTranslation(
+    tile.position.x,
+    tile.position.y,
+    tile.position.z
+  );
+  tileGeometry.applyMatrix(translation);
 
-    var tileMesh = new THREE.Mesh(
-      tileGeometry,
-      tileMaterial
-    );
+  var tileMesh = new THREE.Mesh(
+    tileGeometry,
+    tileMaterial
+  );
 
-    // tileMesh.frustumCulled = false;
-    tileMesh.name = tile.id;
-
-    this.add(tileMesh);
-  }, this);
+  // tileMesh.frustumCulled = false;
+  tileMesh.name = tile.id;
+  // console.log("add tile: ", tile.id);
+  this.add(tileMesh);
 };
 
 ChunkedPlane.prototype.removeTile = function (tile) {
-  if (tile.texture) {
-    tile.texture.dispose();
-  }
   var selectedTile = this.getObjectByName(tile.id);
   if (selectedTile) {
+    // console.log("remove tile: ", tile.id);
+    if (tile.texture) {
+      tile.texture.dispose();
+    }
     selectedTile.geometry.dispose();
     selectedTile.material.dispose();
     this.remove(selectedTile);
+    return true;
   }
+  return false;
 };
 
 ChunkedPlane.prototype.getCameraPosition = function () {

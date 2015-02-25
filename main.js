@@ -29,7 +29,8 @@ function (passThroughVert, passThroughFrag) {
     scene = new THREE.Scene();
 
     var tileLoader = new TileLoader({
-      mapbox: mapboxSettings
+      mapbox: mapboxSettings,
+      layer: 'mapbox.outdoors'
     });
 
     plane = new ChunkedPlane({
