@@ -13,6 +13,7 @@ var TileNode = function (opts) {
   this.row = opts.row || 0;
 
   this.loading = false;
+  this.visible = true;
 
   this.scale = this.master.getScale()/Math.pow(2, this.level);
 
@@ -38,17 +39,20 @@ var TileNode = function (opts) {
  * Check visibility, splitting and merging
  */
 TileNode.prototype.update = function () {
+  var childrenAdded = this.isChildrenAdded();
+
   if (this.isVisible()) {
+    this.visible = true;
     if (this.shouldSplit()) {
       this.split();
-      this.removeFromMaster();
+      // this.removeFromMaster();
       this.update();
     } else if (this.shouldMerge()) {
       this.merge();
       this.addToMaster();
       this.update();
     } else if (this.isSplit) {
-      if (this.added) {
+      if (this.added && childrenAdded) {
         this.removeFromMaster();
       }
       this.updateChildren();
@@ -60,6 +64,8 @@ TileNode.prototype.update = function () {
       this.updateChildren();
     }
     this.removeFromMaster();
+  } else {
+    this.visible = false;
   }
 };
 
@@ -68,6 +74,17 @@ TileNode.prototype.updateChildren = function () {
   this.bottomRight.update();
   this.topLeft.update();
   this.topRight.update();
+};
+
+TileNode.prototype.isChildrenAdded = function () {
+  if (this.isSplit) {
+    var blDone = this.bottomLeft.added || !this.bottomLeft.visible;
+    var brDone = this.bottomRight.added || !this.bottomRight.visible;
+    var tlDone = this.topLeft.added || !this.topLeft.visible;
+    var trDone = this.topRight.added || !this.topRight.visible;
+    return blDone && brDone && tlDone && trDone;
+  }
+  return false;
 };
 
 TileNode.prototype.isVisible = function () {
@@ -233,7 +250,7 @@ TileNode.prototype.removeFromMaster = function () {
 };
 
 /**
- * Removes and collapses this tile
+ * Remove and collapse this tile
  */
 TileNode.prototype.destroy = function () {
   if (this.isSplit) {

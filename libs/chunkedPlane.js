@@ -42,6 +42,9 @@ ChunkedPlane.prototype.initTileTree = function () {
 };
 
 ChunkedPlane.prototype.addTile = function (tile) {
+  var selectedTile = this.getObjectByName(tile.id);
+  if (selectedTile) return;
+
   var tileGeometry = new THREE.PlaneBufferGeometry(tile.scale, tile.scale, this.tileRes, this.tileRes);
 
   var topLeft = new THREE.Vector2(
@@ -51,27 +54,21 @@ ChunkedPlane.prototype.addTile = function (tile) {
 
   var tileMaterial;
 
+  var tileUniforms = {
+    worldScale: {type: "f", value: this.scaleFactor*0.5},
+    level: {type: "f", value: tile.level},
+    tileTex: {type: "t", value: tile.texture},
+    topLeft: {type: "v2", value: topLeft},
+    tileScale: {type: "f", value: tile.scale},
+    opacity: {type: "f", value: 0.0}
+  };
 
-  if (this.vertShader && this.fragShader) {
-    var tileUniforms = {
-      worldScale: {type: "f", value: this.scaleFactor*0.5},
-      level: {type: "f", value: tile.level},
-      tileTex: {type: "t", value: tile.texture},
-      topLeft: {type: "v2", value: topLeft},
-      tileScale: {type: "f", value: tile.scale}
-    };
-
-    tileMaterial = new THREE.ShaderMaterial({
-      uniforms: tileUniforms,
-      vertexShader: this.vertShader,
-      fragmentShader: this.fragShader
-    });
-
-    // tileMaterial.wireframe = true;
-    // tileMaterial.wireframeLinewidth = 1.0;
-  } else {
-    tileMaterial = new THREE.MeshBasicMaterial({wireframe: true, color: 'red'});
-  }
+  tileMaterial = new THREE.ShaderMaterial({
+    uniforms: tileUniforms,
+    vertexShader: this.vertShader,
+    fragmentShader: this.fragShader,
+    transparent: true
+  });
 
   var translation = new THREE.Matrix4().makeTranslation(
     tile.position.x,
@@ -87,23 +84,46 @@ ChunkedPlane.prototype.addTile = function (tile) {
 
   // tileMesh.frustumCulled = false;
   tileMesh.name = tile.id;
-  // console.log("add tile: ", tile.id);
   this.add(tileMesh);
+
+  this._animateTileOpacity(tileMaterial, 100);
 };
 
 ChunkedPlane.prototype.removeTile = function (tile) {
   var selectedTile = this.getObjectByName(tile.id);
   if (selectedTile) {
-    // console.log("remove tile: ", tile.id);
-    if (tile.texture) {
-      tile.texture.dispose();
-    }
-    selectedTile.geometry.dispose();
-    selectedTile.material.dispose();
-    this.remove(selectedTile);
+    // Fade out and remove
+    this._animateTileOpacity(selectedTile.material, -100, function () {
+      if (tile.texture) {
+        tile.texture.dispose();
+      }
+      selectedTile.geometry.dispose();
+      selectedTile.material.dispose();
+      this.remove(selectedTile);
+    });
     return true;
   }
   return false;
+};
+
+ChunkedPlane.prototype._animateTileOpacity = function (material, fadeTime, done) {
+  var self = this;
+
+  var toValue = fadeTime > 0 ? 1.0 : 0.0;
+  var opacity = material.uniforms.opacity.value;
+
+  var tweenOpacity = new TWEEN.Tween({opacity: opacity})
+      .to({opacity: 1.0}, Math.abs(fadeTime))
+      .easing(TWEEN.Easing.Linear.None)
+      .onUpdate(function () {
+        material.uniforms.opacity.value = this.opacity;
+      })
+      .onComplete(function () {
+        if (typeof done === 'function') {
+          done.call(self);
+        }
+      });
+  tweenOpacity.start();
 };
 
 ChunkedPlane.prototype.getCameraPosition = function () {
