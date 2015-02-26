@@ -15,6 +15,7 @@ function (passThroughVert, passThroughFrag) {
   var rendererStats;
   var camera, controls, renderer, scene;
   var plane, planeGeometry, planeMaterial;
+  var tweenRunner;
 
   init();
   animate();
@@ -22,7 +23,7 @@ function (passThroughVert, passThroughFrag) {
   function init() {
     System.logSystemInfo();
 
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.001, 100);
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.00001, 10);
     camera.position.set(0, 0, 2);
     camera.lookAt(new THREE.Vector3(0, 0, 0));
 
@@ -60,7 +61,7 @@ function (passThroughVert, passThroughFrag) {
   }
 
   updateLod = true;
-  function animate() {
+  function animate(time) {
     var dt = new Date() - t;
     t = new Date();
 
@@ -68,6 +69,7 @@ function (passThroughVert, passThroughFrag) {
       plane.update();
     }
     controls.update();
+    TWEEN.update(time);
 
     renderer.render(scene, camera);
     rendererStats.update(renderer);
