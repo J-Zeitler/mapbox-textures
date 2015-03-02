@@ -3,16 +3,19 @@
 var TileLoader = function (opts) {
   opts = opts || {};
 
-  this.baseUrl = opts.mapbox.baseUrl;
-  this.accessToken = opts.mapbox.accessToken;
+  this.baseUrl = opts.service.baseUrl;
+  this.accessToken = opts.service.accessToken;
   this.layer = opts.layer || 'mapbox.streets';
+
+  this.serviceType = opts.service.serviceType;
+  this.getUrl = this.serviceType == 'TMS' ? this.getTMSUrl : this.getVirtualEarthUrl;
 
   this.flushImgSrc = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
   this.loadMap = {};
 };
 
-TileLoader.prototype.loadTileTexture = function (tile, callback, ctx) {
+TileLoader.prototype.getTMSUrl = function (tile) {
   var z = tile.level;
   var x = tile.col;
   var y = tile.row;
@@ -28,7 +31,23 @@ TileLoader.prototype.loadTileTexture = function (tile, callback, ctx) {
     this.accessToken
   ];
 
-  url = url.join('');
+  return url.join('');
+};
+
+TileLoader.prototype.getVirtualEarthUrl = function (tile) {
+  var url = [
+    this.baseUrl,
+    tile.virtualEarthIndex,
+    '.jpeg',
+    '?g=',
+    this.accessToken
+  ];
+
+  return url.join('');
+};
+
+TileLoader.prototype.loadTileTexture = function (tile, callback, ctx) {
+  var url = this.getUrl(tile);
 
   var canvas = document.createElement("canvas");
   var canvasContext = canvas.getContext("2d");

@@ -9,6 +9,8 @@ var TileNode = function (opts) {
   this.transform = opts.transform || '';
   this.tileLoader = opts.tileLoader;
 
+  this.virtualEarthIndex = opts.virtualEarthIndex || 'a0';
+
   this.col = opts.col || 0;
   this.row = opts.row || 0;
 
@@ -45,7 +47,6 @@ TileNode.prototype.update = function () {
     this.visible = true;
     if (this.shouldSplit()) {
       this.split();
-      // this.removeFromMaster();
       this.update();
     } else if (this.shouldMerge()) {
       this.merge();
@@ -58,15 +59,17 @@ TileNode.prototype.update = function () {
       this.updateChildren();
     } else if (!this.added && !this.loading) {
       this.addToMaster();
+      this.update();
     }
-  } else if (this.added) {
-    if (this.isSplit) {
-      this.updateChildren();
-    }
-    this.removeFromMaster();
-  } else {
-    this.visible = false;
+    return;
   }
+  if (this.added) {
+    // if (this.isSplit) {
+    //   this.updateChildren();
+    // }
+    this.removeFromMaster();
+  }
+  this.visible = false;
 };
 
 TileNode.prototype.updateChildren = function () {
@@ -76,6 +79,10 @@ TileNode.prototype.updateChildren = function () {
   this.topRight.update();
 };
 
+/**
+ * Return true if all children have finished loading (sorry for murdering english)
+ * @return Boolean
+ */
 TileNode.prototype.isChildrenAdded = function () {
   if (this.isSplit) {
     var blDone = this.bottomLeft.added || !this.bottomLeft.visible;
@@ -180,18 +187,21 @@ TileNode.prototype.split = function () {
   opts.position = pos.clone();
   opts.col = nextCol;
   opts.row = nextRow + 1;
+  opts.virtualEarthIndex = this.virtualEarthIndex + '2';
   this.bottomLeft = new TileNode(opts);
 
   // BR
   opts.position = pos.clone().add(this.master.getWidthDir().multiplyScalar(this.scale*0.5));
   opts.col = nextCol + 1;
   opts.row = nextRow + 1;
+  opts.virtualEarthIndex = this.virtualEarthIndex + '3';
   this.bottomRight = new TileNode(opts);
 
   // TL
   opts.position = pos.clone().add(this.master.getHeightDir().multiplyScalar(this.scale*0.5));
   opts.col = nextCol;
   opts.row = nextRow;
+  opts.virtualEarthIndex = this.virtualEarthIndex + '0';
   this.topLeft = new TileNode(opts);
 
   // TR
@@ -199,6 +209,7 @@ TileNode.prototype.split = function () {
   opts.position.add(this.master.getWidthDir().multiplyScalar(this.scale*0.5));
   opts.col = nextCol + 1;
   opts.row = nextRow;
+  opts.virtualEarthIndex = this.virtualEarthIndex + '1';
   this.topRight = new TileNode(opts);
 
   this.isSplit = true;
@@ -239,14 +250,14 @@ TileNode.prototype.addToMaster = function () {
 
 /**
  * Attempt to remove this tile from the render list
+ * TODO: ensure remove is successful
  */
 TileNode.prototype.removeFromMaster = function () {
   if (this.tileLoader.isLoading(this)) {
     this.tileLoader.abortLoading(this);
   }
-  if (this.master.removeTile(this)) {
-    this.added = false;
-  }
+  this.master.removeTile(this)
+  this.added = false;
 };
 
 /**

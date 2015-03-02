@@ -5,6 +5,7 @@ require([
   'libs/vendor/text!shaders/passThrough.vert',
   'libs/vendor/text!shaders/passThrough.frag',
   'mapboxSettings',
+  'virtualEarthSettings',
   'libs/vendor/orbitControls',
   'libs/tileNode',
   'libs/chunkedPlane'
@@ -24,18 +25,18 @@ function (passThroughVert, passThroughFrag) {
     System.logSystemInfo();
 
     camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.00001, 10);
-    camera.position.set(0, 0, 2);
+    camera.position.set(0, 0, 0.8);
     camera.lookAt(new THREE.Vector3(0, 0, 0));
 
     scene = new THREE.Scene();
 
     var tileLoader = new TileLoader({
-      mapbox: mapboxSettings,
-      layer: 'mapbox.outdoors'
+      service: mapboxSettings,
+      layer: 'mapbox.streets'
     });
 
     plane = new ChunkedPlane({
-      tileRes: 8,
+      tileRes: 1,
       camera: camera,
       shaders: {
         vert: passThroughVert,

@@ -16,4 +16,6 @@ void main() {
   vec4 texColor = texture2D(tileTex, uv);
 
   gl_FragColor = vec4(texColor.xyz, opacity);
+
+  // gl_FragColor = vec4(uv, 0.0, 1.0);
 }

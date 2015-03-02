@@ -25,6 +25,8 @@ var ChunkedPlane = function (opts) {
 
   this.renderer = opts.renderer;
 
+  this.removeMap = {};
+
   this.initTileTree();
 };
 
@@ -37,7 +39,8 @@ ChunkedPlane.prototype.initTileTree = function () {
     master: this,
     level: 0,
     ulrichFactor: 0.005*this.scaleFactor,
-    tileLoader: this.tileLoader
+    tileLoader: this.tileLoader,
+    virtualEarthIndex: 'a'
   });
 };
 
@@ -67,7 +70,8 @@ ChunkedPlane.prototype.addTile = function (tile) {
     uniforms: tileUniforms,
     vertexShader: this.vertShader,
     fragmentShader: this.fragShader,
-    transparent: true
+    transparent: true,
+    depthTest: false
   });
 
   var translation = new THREE.Matrix4().makeTranslation(
@@ -89,6 +93,9 @@ ChunkedPlane.prototype.addTile = function (tile) {
   this._animateTileOpacity(tileMaterial, 100);
 };
 
+/**
+ * TODO: Fix texture memory leak!
+ */
 ChunkedPlane.prototype.removeTile = function (tile) {
   var selectedTile = this.getObjectByName(tile.id);
   if (selectedTile) {
@@ -99,11 +106,12 @@ ChunkedPlane.prototype.removeTile = function (tile) {
       }
       selectedTile.geometry.dispose();
       selectedTile.material.dispose();
+      if (this.removeMap[tile.id]) delete this.removeMap[tile.id];
       this.remove(selectedTile);
     });
-    return true;
+  } else {
+    this.removeMap[tile.id] = tile;
   }
-  return false;
 };
 
 ChunkedPlane.prototype._animateTileOpacity = function (material, fadeTime, done) {
@@ -138,6 +146,12 @@ ChunkedPlane.prototype.getCameraPosition = function () {
 ChunkedPlane.prototype.update = function () {
   this.updatePerspectiveScaling();
   this.updateFrustum();
+
+  // Clean up dangling tiles
+  var tileIds = Object.keys(this.removeMap);
+  tileIds.forEach(function (id) {
+    this.removeTile(this.removeMap[id]);
+  }, this);
 
   // Recursive tile update
   this.rootTile.update();
