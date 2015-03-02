@@ -46,9 +46,10 @@ ChunkedPlane.prototype.initTileTree = function () {
 
 ChunkedPlane.prototype.addTile = function (tile) {
   var selectedTile = this.getObjectByName(tile.id);
-  if (selectedTile) return;
+  if (selectedTile) return; // already added
 
-  var tileGeometry = new THREE.PlaneBufferGeometry(tile.scale, tile.scale, this.tileRes, this.tileRes);
+  // var tileGeometry = new THREE.PlaneBufferGeometry(tile.scale, tile.scale, this.tileRes, this.tileRes);
+  var tileGeometry = tile.getGeometry();
 
   var topLeft = new THREE.Vector2(
     tile.position.x - tile.scale*0.5,
@@ -73,13 +74,6 @@ ChunkedPlane.prototype.addTile = function (tile) {
     transparent: true,
     depthTest: false
   });
-
-  var translation = new THREE.Matrix4().makeTranslation(
-    tile.position.x,
-    tile.position.y,
-    tile.position.z
-  );
-  tileGeometry.applyMatrix(translation);
 
   var tileMesh = new THREE.Mesh(
     tileGeometry,
@@ -181,23 +175,18 @@ ChunkedPlane.prototype.getScale = function () {
   return this.scaleFactor;
 };
 
+ChunkedPlane.prototype.getTileRes = function () {
+  return this.tileRes;
+};
+
 ChunkedPlane.prototype.isTileInFrustum = function (tile) {
   this.camera.updateMatrix();
   this.camera.updateMatrixWorld();
   this.camera.matrixWorldInverse.getInverse(this.camera.matrixWorld);
 
-  // same transform as above
-  var tileGeometry = new THREE.PlaneBufferGeometry(tile.scale, tile.scale, 1, 1);
-  var translation = new THREE.Matrix4().makeTranslation(
-    tile.position.x,
-    tile.position.y,
-    tile.position.z
-  );
-  tileGeometry.applyMatrix(translation);
+  var tileBoundingBox = tile.getBoundingBox();
 
-  tileGeometry.computeBoundingBox();
-
-  if (this.frustum.intersectsBox(tileGeometry.boundingBox)) return true;
+  if (this.frustum.intersectsBox(tileBoundingBox)) return true;
   return false;
 };
 

@@ -19,11 +19,10 @@ var TileNode = function (opts) {
 
   this.scale = this.master.getScale()/Math.pow(2, this.level);
 
+  // Calculate corners
   var pos = this.position.clone();
   pos.sub(this.master.getWidthDir().multiplyScalar(this.scale*0.5));
   pos.sub(this.master.getHeightDir().multiplyScalar(this.scale*0.5));
-
-  // console.log(this.level + "/" + this.col + "/" + this.row);
 
   this.corners = [
     pos, // BL
@@ -77,6 +76,31 @@ TileNode.prototype.updateChildren = function () {
   this.bottomRight.update();
   this.topLeft.update();
   this.topRight.update();
+};
+
+// TileNode.prototype.getTexture = function () {
+//   if (this.texture) return this.texture;
+// };
+
+TileNode.prototype.getGeometry = function () {
+  if (this.geometry) return this.geometry;
+
+  var res = this.master.getTileRes();
+  this.geometry = new THREE.PlaneBufferGeometry(this.scale, this.scale, res, res);
+
+  var translation = new THREE.Matrix4().makeTranslation(
+    this.position.x,
+    this.position.y,
+    this.position.z
+  );
+
+  this.geometry.applyMatrix(translation);
+  this.geometry.computeBoundingBox();
+  return this.geometry;
+};
+
+TileNode.prototype.getBoundingBox = function () {
+  return this.getGeometry().boundingBox;
 };
 
 /**
